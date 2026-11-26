@@ -852,21 +852,26 @@ A.addEventListener('submit',async e=>{e.preventDefault();if(!sb)return;
 async function signedIn(u){
   if(user&&user.id===u.id)return;user=u;
   aMsg('Loading your log…');
-  try{await loadAll()}catch(e){user=null;aMsg('Couldn\'t load your data. Check your connection and reload the page.');return}
+  try{await loadAll()}catch(e){user=null;showErr('Couldn\'t load your data.',e);return}
   db=makeDb();
   sample={run:async(task,input)=>{const j=await api('/api/ai',{task,input});return j.result}};
   showAuth(false);note('');render();
 }
+function showErr(msg,e){showAuth(true);const d=e&&(e.message||e.code||String(e));
+  A.innerHTML=`<div class="card"><h2>Something went wrong</h2><p>${esc(msg)}</p>${d?`<p class="note">Details: ${esc(d)}</p>`:''}
+    <div class="btns"><button class="btn hot" data-retry>Try again</button>${sb?'<button class="btn alt" data-so>Sign out</button>':''}</div></div>`}
+A.addEventListener('click',e=>{if(e.target.closest('[data-retry]'))location.reload();else if(e.target.closest('[data-so]'))sb.auth.signOut().finally(()=>location.reload())});
 function signedOut(){user=null;db=null;sample=null;est=null;editing=false;resetState();showAuth(true);authUI('in')}
 
 (async()=>{
   showAuth(true);A.innerHTML='<p class="note" style="text-align:center">Loading…</p>';
+  setTimeout(()=>{if(document.body.classList.contains('out')&&!A.querySelector('form,.card'))showErr('FitFore is taking too long to load. Check your connection.',null)},20000);
   try{
     const cfg=await (await fetch('/api/config')).json();
     if(!cfg.url||!cfg.anonKey)throw new Error('missing');
     const{createClient}=await import('https://esm.sh/@supabase/supabase-js@2');
     sb=createClient(cfg.url,cfg.anonKey);
-  }catch(e){A.innerHTML='<div class="card"><h2>Almost ready</h2><p>FitFore can\'t reach its server settings yet. If you run this site, add the Supabase settings in Vercel and redeploy.</p></div>';return}
+  }catch(e){showErr('FitFore can\'t reach its server settings. If you run this site, check the Supabase settings in Vercel and redeploy.',e);return}
   sb.auth.onAuthStateChange((ev,ses)=>{
     if(ev==='PASSWORD_RECOVERY'){recovering=true;showAuth(true);authUI('newpw');return}
     if(ses&&ses.user){if(!recovering)setTimeout(()=>signedIn(ses.user),0)}
