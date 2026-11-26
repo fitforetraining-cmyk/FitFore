@@ -496,7 +496,8 @@ function rSetup(){
       <div class="btns"><button class="btn" id="usec" data-v="${c.t}">Use ${c.t.toLocaleString()} as my goal</button></div>`:'<p class="note">Add your weight to get a suggestion.</p>'}
     <p class="note">Uses the Mifflin-St Jeor formula. It's a starting point: if your weight isn't moving as expected after 2–3 weeks, adjust by 100–200 calories.</p></div>
   <div class="card"><h2>Account</h2><p class="note">Signed in as <b>${esc(user&&user.email||'')}</b></p>
-    <div class="btns"><button class="btn alt" id="signout">Sign out</button><button class="btn alt" id="wipe">Delete all my data</button></div>
+    <div class="btns"><button class="btn alt" id="signout">Sign out</button><label class="btn alt fbtn">Import data<input type="file" accept=".json,application/json" data-import hidden></label><button class="btn alt" id="wipe">Delete all my data</button></div>
+    <p class="note">Import adds a FitFore data file to your account. Anything with the same date is replaced.</p>
     <p class="note"><a href="privacy.html">Privacy policy</a> · <a href="terms.html">Terms of use</a></p></div>`;
 }
 
@@ -735,6 +736,7 @@ let typeT;
 document.addEventListener('input',e=>{const t=e.target;if(t.tagName!=='INPUT'||!(t.dataset.s||t.dataset.pe||t.dataset.pd!=null||t.dataset.lift!=null))return;
   clearTimeout(typeT);typeT=setTimeout(()=>{if(t.isConnected&&t.value!==t.dataset.sv){t.dataset.sv=t.value;fieldSave({target:t})}},1200)});
 document.addEventListener('change',async e=>{const t=e.target;
+  if(t.dataset&&t.dataset.import!=null){const f=t.files&&t.files[0];t.value='';if(f)importFile(f);return}
   if(t.dataset&&t.dataset.photo!=null){const f=t.files&&t.files[0];if(!f)return;photoBusy=true;render();
     try{const d=await shrink(f);if(d)saveWeek('photo',d);else note('That photo is too large — try a different one.')}catch(x){note('Couldn\'t read that photo — try a JPEG or PNG.')}
     photoBusy=false;render();return}
@@ -796,6 +798,18 @@ async function loadAll(){
   resetState();
   for(const{path,data}of rows){const i=path.indexOf('/'),a=path.slice(0,i),b=path.slice(i+1);
     if(a==='app'&&DEF[b])S[b]={...cl(DEF[b]),...data};else if(a==='days'||a==='golf'||a==='weeks')S[a][b]=data}
+}
+const PATH_OK=/^(app\/(settings|plan|foods)|days\/\d{4}-\d{2}-\d{2}|golf\/[\w-]{1,40}|weeks\/\d{4}-\d{2}-\d{2})$/;
+async function importFile(f){
+  if(f.size>20e6){note('That file is too big to import.');return}
+  let o;try{o=JSON.parse(await f.text())}catch(e){note('That file isn\'t a FitFore data file.');return}
+  const docs=o&&o.docs&&typeof o.docs==='object'?Object.entries(o.docs).filter(([p,d])=>PATH_OK.test(p)&&d&&typeof d==='object'):[];
+  if(!docs.length){note('No FitFore data found in that file.');return}
+  toast('Importing…','wait');let bad=0;
+  for(const[p,d]of docs){try{await db.doc(p).set(d)}catch(e){bad++}}
+  try{await loadAll()}catch(e){}
+  render();toast(bad?'Some items didn\'t import':'Imported ✓',bad?'bad':'');
+  note(bad?`Imported ${docs.length-bad} of ${docs.length} items. Try the file again to finish.`:`Imported ${docs.length} items. Your plan, foods and logs are in.`);
 }
 async function wipeAll(){
   const{error}=await sb.from('docs').delete().eq('user_id',user.id);
