@@ -13,6 +13,12 @@ create table if not exists public.docs (
 
 alter table public.docs enable row level security;
 
+-- Newer Supabase projects don't open new tables to signed-in users automatically.
+-- Row level security (the policies below) still limits each user to their own rows.
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on table public.docs to authenticated;
+revoke all on table public.docs from anon;
+
 drop policy if exists "Users read their own data" on public.docs;
 create policy "Users read their own data" on public.docs
   for select to authenticated using (auth.uid() = user_id);
