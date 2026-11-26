@@ -1,0 +1,6 @@
+:root{color-scheme:light dark;--bg:light-dark(#f3f5f0,#0a0b09);--ink:light-dark(#111310,#f1f3ee);--mute:light-dark(#5e645a,#a3aa9c);--ok:light-dark(#4c9400,#9be82a)}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 system-ui,-apple-system,sans-serif}
+main{max-width:680px;margin:0 auto;padding:20px 18px 60px}
+h1{font-size:30px;margin:8px 0 0}h2{font-size:20px;margin:28px 0 6px}
+a{color:var(--ok)}.note{color:var(--mute);font-size:14px}
+li{margin-bottom:6px}
