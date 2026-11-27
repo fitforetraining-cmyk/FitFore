@@ -69,6 +69,28 @@ input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-vis
 .ex.done .nm{text-decoration:line-through;color:var(--mute)}
 .ex input.w{padding:8px;text-align:right}
 .edit{border:1px dashed var(--rule);border-radius:12px;padding:12px;margin-top:12px}
+.scroll{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+.pars{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:4px;margin-bottom:6px}
+.pb{border:1px solid var(--rule);background:var(--bg);border-radius:8px;padding:4px 0;min-height:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--ink)}
+.pb span{font-size:11px;color:var(--mute)}.pb b{font:800 20px "Barlow Condensed",sans-serif}.pb.p3{background:var(--soft)}.pb.p5{background:var(--ink);color:var(--bg)}.pb.p5 span{color:inherit;opacity:.7}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--soft);border-radius:12px;padding:4px;gap:4px}
+.seg button{border:0;background:none;border-radius:9px;min-height:44px;font:600 16px Barlow,system-ui,sans-serif;color:var(--ink);cursor:pointer}.seg button.on{background:var(--acc);color:#000}
+.pl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:6px;margin-bottom:6px}.pl:has(input:only-child){grid-template-columns:1fr}
+.sccard .status{background:#000;color:#fff;border-radius:12px;padding:10px 14px;margin:12px 0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:16px}.sccard .status b{color:var(--acc)}.sccard .status .note{color:#bbb}
+.hnav{display:grid;grid-template-columns:52px minmax(0,1fr) 52px;align-items:center;text-align:center}.hnav .mv{height:52px;font-size:26px}
+.hn{font:800 38px/1 "Barlow Condensed",sans-serif}
+.dots{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:4px;margin:10px 0 6px}
+.dot2{border:0;border-radius:7px;height:30px;background:var(--soft);font:600 13px Barlow,sans-serif;color:var(--mute);cursor:pointer}.dot2.done{background:var(--ok);color:#fff}.dot2.cur{outline:3px solid var(--acc);color:var(--ink)}
+.pr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--rule)}
+.pn{display:flex;flex-direction:column}
+.stp{display:flex;align-items:center;gap:6px}.stp .mv{width:52px;height:52px;font-size:24px}
+.sv{border:0;background:none;color:var(--ink);cursor:pointer;padding:0;font:800 40px/1 "Barlow Condensed",sans-serif;min-width:44px;text-align:center;font-variant-numeric:tabular-nums}.sv.empty{color:var(--rule)}.sv.sm{font-size:30px}
+.mine{background:var(--soft);border-radius:12px;padding:10px 12px;margin-top:12px}.mrow{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.tg{flex:1;border:1px solid var(--rule);background:var(--card);border-radius:10px;min-height:44px;font:600 15px Barlow,sans-serif;color:var(--ink);cursor:pointer}.tg.on{background:var(--acc);border-color:var(--acc);color:#000}
+table.grid{border-collapse:collapse;font-size:14px;margin:10px 0;min-width:100%}table.grid th,table.grid td{border:1px solid var(--rule);padding:5px 4px;text-align:center;min-width:30px}
+table.grid td:first-child,table.grid th:first-child{text-align:left;white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis;position:sticky;left:0;background:var(--card)}
+table.grid tr.par td{color:var(--mute)}
+.sc{display:inline-grid;place-items:center;width:24px;height:24px}.sc.bd{border:1.5px solid var(--ok);border-radius:50%}.sc.eg{border:3px double var(--ok);border-radius:50%}.sc.bg{border:1.5px solid var(--mute)}.sc.db{background:var(--mute);color:var(--bg)}.sc.won{font-weight:800;color:var(--ok)}
 .xlist{margin-top:12px}
 .lib{border:2px solid var(--acc);border-radius:14px;padding:12px;margin-top:12px;background:var(--card)}
 .libh{display:flex;justify-content:space-between;align-items:center;font:700 20px "Barlow Condensed",sans-serif}
@@ -191,8 +213,8 @@ const key=d=>d.toLocaleDateString('en-CA');
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MEALS=['Breakfast','Lunch','Dinner','Snack'];
-const DEF={settings:{goal:2200,protein:160,water:100,sex:'m',age:45,heightIn:72,weightLb:'',activity:1.375,pace:-500},plan:{days:[]},foods:{list:[]}};
-const S={settings:cl(DEF.settings),plan:cl(DEF.plan),foods:cl(DEF.foods),days:{},golf:{},weeks:{}};
+const DEF={courses:{list:[]},settings:{goal:2200,protein:160,water:100,sex:'m',age:45,heightIn:72,weightLb:'',activity:1.375,pace:-500},plan:{days:[]},foods:{list:[]}};
+const S={courses:cl(DEF.courses),settings:cl(DEF.settings),plan:cl(DEF.plan),foods:cl(DEF.foods),days:{},golf:{},weeks:{},cards:{}};
 let cur=new Date(),db=null,sample=null,tab='food',editing=false,est=null,busyAI=false,dirty=false;
 let sb=null,user=null,recovering=/type=recovery/.test(location.hash);
 
@@ -200,12 +222,13 @@ function note(t){const m=$('#msg');m.textContent=t||'';m.style.display=t?'block'
 
 /* ---------- storage ---------- */
 const LS='fuel-train-v1';
-function lsLoad(){try{const o=JSON.parse(localStorage.getItem(LS)||'null');if(o)for(const k of ['settings','plan','foods','days','golf','weeks'])if(o[k])S[k]=o[k]}catch(e){}}
+function lsLoad(){try{const o=JSON.parse(localStorage.getItem(LS)||'null');if(o)for(const k of ['settings','plan','foods','days','golf','weeks','cards','courses'])if(o[k])S[k]=o[k]}catch(e){}}
 function lsSave(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){note('This device is out of storage space — remove an old progress photo to keep saving.')}}
 const q={},busy={},DELETE={del:1};
 function put(path,data){
   if(path.startsWith('days/'))S.days[path.slice(5)]=data;
   else if(path.startsWith('golf/')){if(data)S.golf[path.slice(5)]=data;else delete S.golf[path.slice(5)]}
+  else if(path.startsWith('cards/')){if(data)S.cards[path.slice(6)]=data;else delete S.cards[path.slice(6)]}
   else if(path.startsWith('weeks/')){if(data)S.weeks[path.slice(6)]=data;else delete S.weeks[path.slice(6)]}
   else S[path.slice(4)]=data;
   render();
@@ -532,6 +555,88 @@ async function formTips(di,ei){
   }catch(e){handleAI(e)}busyAI=false;render();
 }
 
+/* ---------- scorecard ---------- */
+let scD=null,scView=null,scGrid=false;
+const newDraft=()=>({course:'',pars:Array(18).fill(4),format:'individual',scoring:'stroke',sides:[{name:'Me',members:''},{name:'',members:''},{name:'',members:''},{name:'',members:''}]});
+const activeCard=()=>Object.values(S.cards).filter(c=>!c.done).sort((a,b)=>b.t-a.t)[0]||null;
+const nSides=c=>c.scoring==='match'?2:(c.format==='scramble'?4:4);
+const vsPar=n=>n===0?'E':(n>0?'+'+n:String(n));
+const holeName=(s,p)=>{const d=s-p;return s===1?'Ace':d<=-3?'Albatross':d===-2?'Eagle':d===-1?'Birdie':d===0?'Par':d===1?'Bogey':d===2?'Double':d===3?'Triple':'+'+d}
+function cardStats(c){
+  return c.sides.map((sd,i)=>{const sc=c.scores[i];let tot=0,par=0,thru=0,out=0,inn=0;
+    sc.forEach((v,h)=>{if(v){tot+=v;par+=c.pars[h];thru++;if(h<9)out+=v;else inn+=v}});return{name:sd.name,tot,rel:tot-par,thru,out,inn}});
+}
+function matchStatus(c){
+  const A=c.scores[0],B=c.scores[1],n=c.sides.map(s=>s.name);let up=0,thru=0;
+  for(let h=0;h<18;h++){if(!A[h]||!B[h])break;if(A[h]<B[h])up++;else if(B[h]<A[h])up--;thru=h+1;
+    const left=18-thru;if(Math.abs(up)>left)return{over:true,text:`${n[up>0?0:1]} wins ${Math.abs(up)} & ${left}`,up,thru}}
+  const left=18-thru;
+  if(thru===18)return{over:true,text:up?`${n[up>0?0:1]} wins ${Math.abs(up)} up`:'Match halved',up,thru};
+  if(!thru)return{text:'All square',up,thru};
+  return{text:(up?`${n[up>0?0:1]} ${Math.abs(up)} up`:'All square')+(up&&Math.abs(up)===left?' (dormie)':'')+` thru ${thru}`,up,thru};
+}
+function holeWinner(c,h){const a=c.scores[0][h],b=c.scores[1][h];return!a||!b?null:a<b?0:b<a?1:-1}
+function gridHTML(c){
+  const seg=(a,b)=>Array.from({length:b-a},(_,i)=>a+i),st=cardStats(c),par=c.pars,ps=(a,b)=>seg(a,b).reduce((t,i)=>t+par[i],0);
+  const cell=(c2,h)=>{const v=c.scores[c2][h];if(!v)return'<td></td>';const d=v-par[h];return`<td><span class="sc ${d<=-2?'eg':d===-1?'bd':d===1?'bg':d>=2?'db':''}${c.scoring==='match'&&holeWinner(c,h)===c2?' won':''}">${v}</span></td>`};
+  const sub=(i,a,b)=>seg(a,b).reduce((t,h)=>t+(c.scores[i][h]||0),0)||'';
+  const half=(a,b,lab)=>`<table class="grid"><thead><tr><th>Hole</th>${seg(a,b).map(i=>`<th>${i+1}</th>`).join('')}<th>${lab}</th>${b===18?'<th>Tot</th>':''}</tr></thead><tbody>
+    <tr class="par"><td>Par</td>${seg(a,b).map(i=>`<td>${par[i]}</td>`).join('')}<td>${ps(a,b)}</td>${b===18?`<td>${ps(0,18)}</td>`:''}</tr>
+    ${c.sides.map((sd,i)=>`<tr><td>${esc(sd.name)}</td>${seg(a,b).map(h=>cell(i,h)).join('')}<td><b>${sub(i,a,b)}</b></td>${b===18?`<td><b>${st[i].tot||''}</b></td>`:''}</tr>`).join('')}</tbody></table>`;
+  return`<div class="scroll">${half(0,9,'Out')}${half(9,18,'In')}</div><p class="note">Circle = birdie or better (double circle eagle), square = bogey, filled square = double or worse.${c.scoring==='match'?' Bold green = hole won.':''}</p>`;
+}
+function rCard(){
+  const c=activeCard();
+  if(c)return playCard(c);
+  if(scView&&S.cards[scView]){const v=S.cards[scView];return`<div class="card"><div class="libh"><h2 style="margin:0">${esc(v.course||'Round')}</h2><button class="x" id="scclose" aria-label="Close">×</button></div>
+    <p class="note">${new Date(v.date+'T12:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'})} · ${v.format==='scramble'?'Scramble':'Individual'} · ${v.scoring==='match'?'Match play':'Stroke play'}</p>
+    <p><b>${esc(resultText(v))}</b></p>${gridHTML(v)}<div class="btns"><button class="btn alt sm" data-scdel="${esc(v.id)}">Delete round</button></div></div>`}
+  if(!scD)return`<div class="card"><h2>Scorecard</h2><p class="note">Keep score hole by hole for yourself or your group — individual or scramble, stroke or match play.</p>
+    <div class="btns"><button class="btn hot" id="scnew">Start a new round</button></div>${pastCards()}</div>`;
+  const d=scD,team=d.format==='scramble',n=d.scoring==='match'?2:4,courses=(S.courses.list||[]);
+  return`<div class="card"><div class="libh"><h2 style="margin:0">New round</h2><button class="x" id="sccancel" aria-label="Cancel">×</button></div>
+    <label for="scc">Course</label><input id="scc" data-scd="course" value="${esc(d.course)}" placeholder="Course name">
+    ${courses.length?`<div class="chips">${courses.map((x,i)=>`<button class="chip" data-sccourse="${i}">${esc(x.name)} · par ${x.pars.reduce((a,b)=>a+b,0)}</button>`).join('')}</div>`:''}
+    <label>Par for each hole <span class="note">(tap to change: 3 → 4 → 5)</span></label>
+    ${[0,9].map(a=>`<div class="pars">${Array.from({length:9},(_,i)=>a+i).map(i=>`<button class="pb p${d.pars[i]}" data-par="${i}"><span>${i+1}</span><b>${d.pars[i]}</b></button>`).join('')}</div>`).join('')}
+    <p class="note">Front ${d.pars.slice(0,9).reduce((a,b)=>a+b,0)} · Back ${d.pars.slice(9).reduce((a,b)=>a+b,0)} · <b>Par ${d.pars.reduce((a,b)=>a+b,0)}</b></p>
+    <label>Format</label><div class="seg"><button class="${!team?'on':''}" data-scf="individual">Individual</button><button class="${team?'on':''}" data-scf="scramble">Scramble</button></div>
+    <label>Scoring</label><div class="seg"><button class="${d.scoring==='stroke'?'on':''}" data-scs="stroke">Stroke play</button><button class="${d.scoring==='match'?'on':''}" data-scs="match">Match play</button></div>
+    <p class="note">${d.scoring==='match'?(team?'Two teams play each hole; the lower team score wins the hole.':'Two players go head to head; the lower score wins each hole.'):(team?'Each team plays its best ball every shot and records one score per hole. Up to 4 teams.':'Everyone plays their own ball; lowest total wins. Up to 4 players.')}</p>
+    <label>${team?'Teams':'Players'}</label>
+    ${Array.from({length:n},(_,i)=>`<div class="pl"><input data-scside="${i}" value="${esc(d.sides[i].name)}" placeholder="${team?'Team '+(i+1):i?'Player '+(i+1):'Your name'}" aria-label="${team?'Team':'Player'} ${i+1} name">${team?`<input data-scmem="${i}" value="${esc(d.sides[i].members)}" placeholder="Players (optional)" aria-label="Team ${i+1} players">`:''}</div>`).join('')}
+    <p class="note">${d.scoring==='match'?'Both sides need a name.':'Leave a spot blank if you have fewer '+(team?'teams.':'players.')}</p>
+    <div class="btns"><button class="btn hot" id="scstart">Tee off</button></div></div>`;
+}
+function resultText(c){
+  if(c.scoring==='match')return matchStatus(c).text;
+  const st=cardStats(c).filter(s=>s.thru).sort((a,b)=>a.rel-b.rel||a.tot-b.tot);
+  return st.map(s=>`${s.name} ${s.tot} (${vsPar(s.rel)})`).join(' · ')||'No scores';
+}
+function pastCards(){
+  const done=Object.values(S.cards).filter(c=>c.done).sort((a,b)=>b.t-a.t).slice(0,10);
+  return done.length?`<label>Past scorecards</label>${done.map(c=>`<button class="li" data-scview="${esc(c.id)}"><span><b>${esc(c.course||'Round')}</b><span class="note">${new Date(c.date+'T12:00').toLocaleDateString(undefined,{month:'short',day:'numeric'})} · ${c.format==='scramble'?'Scramble':'Individual'} · ${c.scoring==='match'?'Match':'Stroke'} — ${esc(resultText(c))}</span></span><i>›</i></button>`).join('')}`:'';
+}
+function playCard(c){
+  const h=c.hole||0,par=c.pars[h],me=c.format==='individual',ms=c.scoring==='match'?matchStatus(c):null,st=cardStats(c);
+  const lead=c.scoring==='stroke'?st.filter(s=>s.thru).sort((a,b)=>a.rel-b.rel).map(s=>`<span><b>${esc(s.name)}</b> ${vsPar(s.rel)}${s.thru<18?` <span class="note">thru ${s.thru}</span>`:''}</span>`).join(''):'';
+  let s=`<div class="card sccard"><div class="libh"><div><h2 style="margin:0">${esc(c.course||'Scorecard')}</h2><p class="note" style="margin:2px 0 0">${me?'Individual':'Scramble'} · ${c.scoring==='match'?'Match play':'Stroke play'} · Par ${c.pars.reduce((a,b)=>a+b,0)}</p></div></div>
+    <div class="status">${ms?`<b>${esc(ms.text)}</b>`:lead||'<span class="note">Enter scores to see the leaderboard</span>'}</div>
+    <div class="hnav"><button class="mv" data-hole="${h-1}" aria-label="Previous hole"${h?'':' disabled'}>‹</button><div><div class="hn">Hole ${h+1}</div><div class="note">Par ${par}</div></div><button class="mv" data-hole="${h+1}" aria-label="Next hole"${h<17?'':' disabled'}>›</button></div>
+    <p class="note" style="text-align:center;margin:4px 0 0">Tap the grey number to record par, or use − and +.</p>
+    <div class="dots">${c.pars.map((p,i)=>`<button class="dot2${i===h?' cur':''}${c.scores.every(x=>x[i])?' done':''}" data-hole="${i}" aria-label="Hole ${i+1}">${i+1}</button>`).join('')}</div>`;
+  s+=c.sides.map((sd,i)=>{const v=c.scores[i][h];return`<div class="pr"><div class="pn"><b>${esc(sd.name)}</b>${sd.members?`<span class="note">${esc(sd.members)}</span>`:''}<span class="note">${v?holeName(v,par):'—'} · total ${st[i].tot||0}${st[i].thru?' ('+vsPar(st[i].rel)+')':''}</span></div>
+    <div class="stp"><button class="mv" data-sco="${i}:-1" aria-label="One less">−</button><button class="sv${v?'':' empty'}" data-scpar="${i}" aria-label="${v?'Score '+v:'Tap to enter par'}">${v||par}</button><button class="mv" data-sco="${i}:1" aria-label="One more">+</button></div></div>`}).join('');
+  if(me){const m=c.me||{},pt=(m.putts||[])[h],fw=(m.fir||[])[h],gr=(m.gir||[])[h];
+    s+=`<div class="mine"><span class="note">${esc(c.sides[0].name)}'s stats</span><div class="mrow"><span>Putts</span><div class="stp"><button class="mv" data-putt="-1" aria-label="One fewer putt">−</button><button class="sv sm${pt==null?' empty':''}" data-puttset aria-label="${pt==null?'Tap for 2 putts':pt+' putts'}">${pt??2}</button><button class="mv" data-putt="1" aria-label="One more putt">+</button></div></div>
+      <div class="mrow">${par>3?`<button class="tg${fw?' on':''}" data-tg="fir">Fairway hit</button>`:''}<button class="tg${gr?' on':''}" data-tg="gir">Green in reg.</button></div></div>`}
+  s+=`<div class="btns"><button class="btn hot" data-hole="${Math.min(h+1,17)}"${h<17?'':' disabled'}>Next hole</button><button class="btn alt" id="scgrid">${scGrid?'Hide':'Full'} scorecard</button></div>
+    ${scGrid?gridHTML(c):''}
+    <div class="btns"><button class="btn alt sm" id="scfin">Finish round</button><button class="btn alt sm" data-scdel="${esc(c.id)}">Delete round</button></div></div>`;
+  return s;
+}
+function saveCard(c){c.t=Date.now();put('cards/'+c.id,c)}
+
 /* ---------- golf ---------- */
 const GCAT={putt:'Putting',short:'Short game',iron:'Irons',driver:'Driver',fit:'Golf fitness',mental:'On-course & mental'};
 const DRILLS=[
@@ -580,7 +685,7 @@ function gStats(){
 }
 function rGolf(){
   const d=dayOf(dk()),g=d.golf,st=gStats(),fx=(v,s='')=>v==null?'—':Math.round(v)+s;
-  let h=`<div class="card"><h2>Practice plan</h2>
+  let h=rCard()+`<div class="card"><h2>Practice plan</h2>
     <label>How long do you have?</label><div class="chips">${[20,45,60,90].map(m=>`<button class="chip${gMin===m?' on':''}" data-gmin="${m}">${m} min</button>`).join('')}</div>
     <label>Focus</label><div class="chips">${Object.keys(FNAME).map(k=>`<button class="chip${gFocus===k?' on':''}" data-gf="${k}">${FNAME[k]}</button>`).join('')}</div>
     <div class="btns"><button class="btn" id="gsug">${g&&g.items&&g.items.length?'Suggest a different plan':'Suggest a plan'}</button></div>`;
@@ -685,6 +790,39 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
   else if(D.pick)editDay(d=>{d.wd=D.pick==='rest'?'rest':D.pick});
   else if(b.id==='edt'){editing=!editing;render()}
   else if(b.id==='ppb')buildPlan();
+  else if(b.id==='scnew'){scD=newDraft();const me=(S.settings.name||'').trim();if(me)scD.sides[0].name=me;render()}
+  else if(b.id==='sccancel'){scD=null;render()}
+  else if(b.id==='scclose'){scView=null;render()}
+  else if(D.scview){scView=D.scview;render();scrollTo({top:0,behavior:'smooth'})}
+  else if(D.par!=null){const i=Number(D.par);scD.pars[i]=scD.pars[i]===5?3:scD.pars[i]+1;render()}
+  else if(D.sccourse!=null){const x=S.courses.list[D.sccourse];scD.course=x.name;scD.pars=x.pars.slice();render()}
+  else if(D.scf){scD.format=D.scf;if(D.scf==='scramble'&&scD.sides[0].name==='Me')scD.sides[0].name='';render()}
+  else if(D.scs){scD.scoring=D.scs;render()}
+  else if(b.id==='scstart'){const d=scD,n=d.scoring==='match'?2:4,team=d.format==='scramble';
+    const sides=d.sides.slice(0,n).map((s,i)=>({name:s.name.trim()||(i===0&&!team?'':''),members:team?s.members.trim():''})).filter((s,i)=>s.name||(d.scoring==='match'));
+    if(d.scoring==='match'&&sides.some(s=>!s.name)){note('Give both '+(team?'teams':'players')+' a name for match play.');return}
+    if(!sides.length){note('Add at least one '+(team?'team':'player')+'.');return}
+    const c={id:uid(),date:dk(),course:d.course.trim().slice(0,60),pars:d.pars.slice(),format:d.format,scoring:d.scoring,sides:sides.map(s=>({name:s.name.slice(0,30),members:s.members.slice(0,80)})),scores:sides.map(()=>Array(18).fill(null)),me:{putts:[],fir:[],gir:[]},hole:0,done:false};
+    if(c.course){const cs=cl(S.courses);cs.list=(cs.list||[]).filter(x=>x.name.toLowerCase()!==c.course.toLowerCase());cs.list.unshift({name:c.course,pars:c.pars});cs.list=cs.list.slice(0,20);put('app/courses',cs)}
+    if(!team&&sides[0].name){const s=cl(S.settings);if(!s.name){s.name=sides[0].name;put('app/settings',s)}}
+    scD=null;scGrid=false;saveCard(c)}
+  else if(D.hole!=null){const c=cl(activeCard());c.hole=Math.max(0,Math.min(17,Number(D.hole)));saveCard(c)}
+  else if(D.sco){const[i,dl]=D.sco.split(':').map(Number),c=cl(activeCard()),h=c.hole,v=c.scores[i][h];c.scores[i][h]=Math.max(1,Math.min(15,(v||c.pars[h])+dl));saveCard(c)}
+  else if(D.scpar!=null){const c=cl(activeCard()),h=c.hole;if(!c.scores[D.scpar][h]){c.scores[D.scpar][h]=c.pars[h];saveCard(c)}}
+  else if(D.putt){const c=cl(activeCard()),h=c.hole,p=c.me.putts||(c.me.putts=[]);p[h]=Math.max(0,Math.min(9,(p[h]??2)+Number(D.putt)));saveCard(c)}
+  else if(D.puttset!=null){const c=cl(activeCard()),h=c.hole,p=c.me.putts||(c.me.putts=[]);if(p[h]==null){p[h]=2;saveCard(c)}}
+  else if(D.tg){const c=cl(activeCard()),h=c.hole,a=c.me[D.tg]||(c.me[D.tg]=[]);a[h]=!a[h];saveCard(c)}
+  else if(b.id==='scgrid'){scGrid=!scGrid;render()}
+  else if(b.id==='scfin'){if(!b.dataset.sure){b.dataset.sure=1;b.textContent='Tap again to finish';b.classList.add('hot');return}
+    const c=cl(activeCard());c.done=true;saveCard(c);
+    const played=c.scores[0].filter(Boolean).length;
+    if(c.format==='individual'&&c.sides[0].name&&played>=9){const me=c.me||{},hs=c.scores[0].map((v,i)=>v?i:-1).filter(i=>i>=0);
+      const fwh=hs.filter(i=>c.pars[i]>3);
+      put('golf/'+uid(),{date:c.date,type:'Round',t:Date.now(),course:c.course,holes:played>=18?18:9,score:hs.reduce((t,i)=>t+c.scores[0][i],0),
+        putts:hs.some(i=>(me.putts||[])[i]!=null)?hs.reduce((t,i)=>t+((me.putts||[])[i]||0),0):'',fir:fwh.filter(i=>(me.fir||[])[i]).length,firOf:fwh.length,gir:hs.filter(i=>(me.gir||[])[i]).length,notes:c.scoring==='match'?matchStatus(c).text:''});
+      note('Round finished and added to your golf stats.')}
+    else note('Round finished: '+resultText(c));scView=c.id;render()}
+  else if(D.scdel){if(!b.dataset.sure){b.dataset.sure=1;b.textContent='Tap again to delete';b.classList.add('hot');return}put('cards/'+D.scdel,null);scView=null}
   else if(b.id==='tstart'){setTimer(t=>{t.start=Date.now();t.first=t.first||t.start});toast('Workout started')}
   else if(b.id==='tpause'){setTimer(t=>{if(t.start){t.segs.push([t.start,Date.now()]);t.start=null}});toast('Paused')}
   else if(b.id==='tstop'){let ms=0;setTimer(t=>{if(t.start){t.segs.push([t.start,Date.now()]);t.start=null}ms=tEl(t)});note('Workout finished — '+fmtT(ms)+'. Nice work.')}
@@ -744,6 +882,8 @@ document.addEventListener('change',async e=>{const t=e.target;
 document.addEventListener('input',e=>{const t=e.target;if(!t.dataset||!t.dataset.wk)return;clearTimeout(typeT);
   typeT=setTimeout(()=>{if(t.isConnected&&t.value!==t.dataset.sv){t.dataset.sv=t.value;fieldSave({target:t})}},1200)});
 document.addEventListener('input',e=>{if(e.target.id!=='libq')return;libQ=e.target.value;const l=$('#liblist');if(l){l.innerHTML=libList();l.scrollTop=0}});
+document.addEventListener('input',e=>{const t=e.target,D=t.dataset;if(!scD)return;
+  if(D.scd!=null)scD[D.scd]=t.value;else if(D.scside!=null)scD.sides[D.scside].name=t.value;else if(D.scmem!=null)scD.sides[D.scmem].members=t.value});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&bigPhoto){bigPhoto=null;render()}});
 document.addEventListener('click',e=>{const p=e.target.closest('#pill');if(!p)return;e.preventDefault();cur=new Date(p.dataset.day+'T12:00');if(location.hash!=='#workout')location.hash='workout';else render()});
 setInterval(()=>{document.querySelectorAll('[data-tick]').forEach(el=>{const d=S.days[el.dataset.tick];if(d&&d.timer)el.textContent=fmtT(tEl(d.timer))});
@@ -791,15 +931,15 @@ async function api(path,body){
 function makeDb(){return{doc:p=>({
   set:async d=>{const{error}=await sb.from('docs').upsert({user_id:user.id,path:p,data:d,updated_at:new Date().toISOString()});if(error)throw error},
   delete:async()=>{const{error}=await sb.from('docs').delete().eq('user_id',user.id).eq('path',p);if(error)throw error}})}}
-function resetState(){S.settings=cl(DEF.settings);S.plan=cl(DEF.plan);S.foods=cl(DEF.foods);S.days={};S.golf={};S.weeks={}}
+function resetState(){S.settings=cl(DEF.settings);S.plan=cl(DEF.plan);S.foods=cl(DEF.foods);S.courses=cl(DEF.courses);S.days={};S.golf={};S.weeks={};S.cards={}}
 async function loadAll(){
   const rows=[];
   for(let from=0;;from+=1000){const{data,error}=await sb.from('docs').select('path,data').order('path').range(from,from+999);if(error)throw error;rows.push(...data);if(data.length<1000)break}
   resetState();
   for(const{path,data}of rows){const i=path.indexOf('/'),a=path.slice(0,i),b=path.slice(i+1);
-    if(a==='app'&&DEF[b])S[b]={...cl(DEF[b]),...data};else if(a==='days'||a==='golf'||a==='weeks')S[a][b]=data}
+    if(a==='app'&&DEF[b])S[b]={...cl(DEF[b]),...data};else if(a==='days'||a==='golf'||a==='weeks'||a==='cards')S[a][b]=data}
 }
-const PATH_OK=/^(app\/(settings|plan|foods)|days\/\d{4}-\d{2}-\d{2}|golf\/[\w-]{1,40}|weeks\/\d{4}-\d{2}-\d{2})$/;
+const PATH_OK=/^(app\/(settings|plan|foods|courses)|days\/\d{4}-\d{2}-\d{2}|golf\/[\w-]{1,40}|cards\/[\w-]{1,40}|weeks\/\d{4}-\d{2}-\d{2})$/;
 async function importFile(f){
   if(f.size>20e6){note('That file is too big to import.');return}
   let o;try{o=JSON.parse(await f.text())}catch(e){note('That file isn\'t a FitFore data file.');return}
