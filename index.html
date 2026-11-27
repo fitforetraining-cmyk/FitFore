@@ -636,6 +636,24 @@ function playCard(c){
   return s;
 }
 function saveCard(c){c.t=Date.now();put('cards/'+c.id,c)}
+/* Record a finished scorecard as a Round in the golf log (once per card). Returns true if logged. */
+function logRound(c){
+  if(c.logged)return false;
+  const hs=c.scores[0].map((v,i)=>v?i:-1).filter(i=>i>=0),played=hs.length;if(!played)return false;
+  const indiv=c.format==='individual',me=c.me||{},fwh=hs.filter(i=>c.pars[i]>3);
+  const fmt=(indiv?'Individual':'Scramble')+' · '+(c.scoring==='match'?'match play':'stroke play');
+  const res=c.scoring==='match'?matchStatus(c).text:(c.sides.length>1?resultText(c):'');
+  const o={date:c.date,type:'Round',t:Date.now(),card:c.id,fmt:c.format,course:c.course,holes:played>=18?18:played>=9?9:played,partial:played<9||(played>9&&played<18),
+    score:hs.reduce((t,i)=>t+c.scores[0][i],0),who:c.sides[0].name||'',notes:fmt+(res?' — '+res:'')};
+  if(indiv)Object.assign(o,{putts:hs.some(i=>(me.putts||[])[i]!=null)?hs.reduce((t,i)=>t+((me.putts||[])[i]||0),0):'',fir:fwh.filter(i=>(me.fir||[])[i]).length,firOf:fwh.length,gir:hs.filter(i=>(me.gir||[])[i]).length});
+  put('golf/'+uid(),o);c.logged=true;return true;
+}
+/* Finished cards from before rounds were logged automatically: add any that aren't in the log yet. */
+function backfillRounds(){
+  for(const c0 of Object.values(S.cards)){if(!c0.done||c0.logged)continue;const c=cl(c0);
+    const dup=Object.values(S.golf).some(g=>g.type==='Round'&&(g.card===c.id||(g.date===c.date&&(g.course||'')===(c.course||''))));
+    if(!dup)logRound(c);else c.logged=true;saveCard(c)}
+}
 
 /* ---------- golf ---------- */
 const GCAT={putt:'Putting',short:'Short game',iron:'Irons',driver:'Driver',fit:'Golf fitness',mental:'On-course & mental'};
@@ -675,7 +693,7 @@ function suggest(){
 function gStats(){
   const all=Object.entries(S.golf).map(([id,x])=>({id,...x})).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||num(b.t)-num(a.t));
   const now=new Date(),ago=n=>{const d=new Date(now);d.setDate(d.getDate()-n);return key(d)};
-  const prac=all.filter(x=>x.type!=='Round'),rounds=all.filter(x=>x.type==='Round'&&num(x.score));
+  const prac=all.filter(x=>x.type!=='Round'),rounds=all.filter(x=>x.type==='Round'&&num(x.score)&&(!x.fmt||x.fmt==='individual')&&!x.partial);
   const r5=rounds.slice(0,5),f=x=>num(x.holes,18)===9?2:1;
   const avg=(a,fn)=>a.length?a.reduce((t,x)=>t+fn(x),0)/a.length:null;
   const fr=rounds.filter(x=>num(x.firOf)),gr=rounds.filter(x=>x.gir!==''&&x.gir!=null);
@@ -720,8 +738,8 @@ function rGolf(){
     <div><b>${st.week}</b><span>sessions, last 7 days</span></div><div><b>${st.mins.toLocaleString()}</b><span>practice min, last 30 days</span></div>
     <div><b>${fx(st.score)}</b><span>avg score, last 5 rounds${st.n?'':' (no rounds yet)'}</span></div><div><b>${fx(st.putts)}</b><span>avg putts per 18</span></div>
     <div><b>${fx(st.fir,'%')}</b><span>fairways hit</span></div><div><b>${fx(st.gir,'%')}</b><span>greens in regulation</span></div></div>
-    <p class="note">9-hole rounds count double so they compare with 18.</p>
-    ${st.all.slice(0,10).map(x=>`<div class="item"><span class="n"><b>${esc(x.type)}</b> · ${esc(new Date(x.date+'T12:00').toLocaleDateString(undefined,{month:'short',day:'numeric'}))}${x.course?' · '+esc(x.course):''}<br><span class="note">${x.type==='Round'?`${num(x.holes,18)} holes${num(x.putts)?' · '+num(x.putts)+' putts':''}${num(x.firOf)?' · '+num(x.fir)+'/'+num(x.firOf)+' fairways':''}${x.gir!==''&&x.gir!=null?' · '+num(x.gir)+' GIR':''}`:(num(x.min)?num(x.min)+' min':'')+(num(x.balls)?' · '+num(x.balls)+' balls':'')+(x.drills&&x.drills.length?' · '+esc(x.drills.join(', ')):'')}${x.notes?'<br>'+esc(x.notes):''}</span></span>
+    <p class="note">9-hole rounds count double so they compare with 18. Scramble rounds and unfinished rounds are logged but left out of these averages.</p>
+    ${st.all.slice(0,10).map(x=>`<div class="item"><span class="n"><b>${esc(x.type)}</b> · ${esc(new Date(x.date+'T12:00').toLocaleDateString(undefined,{month:'short',day:'numeric'}))}${x.course?' · '+esc(x.course):''}<br><span class="note">${x.type==='Round'?`${x.partial?num(x.holes)+' holes played':num(x.holes,18)+' holes'}${num(x.putts)?' · '+num(x.putts)+' putts':''}${num(x.firOf)?' · '+num(x.fir)+'/'+num(x.firOf)+' fairways':''}${x.gir!==''&&x.gir!=null?' · '+num(x.gir)+' GIR':''}`:(num(x.min)?num(x.min)+' min':'')+(num(x.balls)?' · '+num(x.balls)+' balls':'')+(x.drills&&x.drills.length?' · '+esc(x.drills.join(', ')):'')}${x.notes?'<br>'+esc(x.notes):''}</span></span>
       <span class="k">${x.type==='Round'?num(x.score):''}</span><button class="x" data-gdel="${esc(x.id)}" aria-label="Delete entry">×</button></div>`).join('')||'<p class="note">Nothing logged yet.</p>'}</div>`;
   h+=`<div class="card"><h2>Drill library</h2><div class="chips"><button class="chip${gCat==='all'?' on':''}" data-gcat="all">All</button>${Object.keys(GCAT).map(k=>`<button class="chip${gCat===k?' on':''}" data-gcat="${k}">${GCAT[k]}</button>`).join('')}</div>
     ${DRILLS.filter(x=>gCat==='all'||x.cat===gCat).map(x=>`<details class="dr"><summary>${esc(x.name)}<span class="tag">${GCAT[x.cat]}</span></summary><p>${esc(x.how)}</p><p class="note"><b>Goal:</b> ${esc(x.goal)}</p><button class="btn alt" data-gadd="${x.id}">Add to today's plan</button></details>`).join('')}</div>`;
@@ -814,14 +832,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
   else if(D.tg){const c=cl(activeCard()),h=c.hole,a=c.me[D.tg]||(c.me[D.tg]=[]);a[h]=!a[h];saveCard(c)}
   else if(b.id==='scgrid'){scGrid=!scGrid;render()}
   else if(b.id==='scfin'){if(!b.dataset.sure){b.dataset.sure=1;b.textContent='Tap again to finish';b.classList.add('hot');return}
-    const c=cl(activeCard());c.done=true;saveCard(c);
-    const played=c.scores[0].filter(Boolean).length;
-    if(c.format==='individual'&&c.sides[0].name&&played>=9){const me=c.me||{},hs=c.scores[0].map((v,i)=>v?i:-1).filter(i=>i>=0);
-      const fwh=hs.filter(i=>c.pars[i]>3);
-      put('golf/'+uid(),{date:c.date,type:'Round',t:Date.now(),course:c.course,holes:played>=18?18:9,score:hs.reduce((t,i)=>t+c.scores[0][i],0),
-        putts:hs.some(i=>(me.putts||[])[i]!=null)?hs.reduce((t,i)=>t+((me.putts||[])[i]||0),0):'',fir:fwh.filter(i=>(me.fir||[])[i]).length,firOf:fwh.length,gir:hs.filter(i=>(me.gir||[])[i]).length,notes:c.scoring==='match'?matchStatus(c).text:''});
-      note('Round finished and added to your golf stats.')}
-    else note('Round finished: '+resultText(c));scView=c.id;render()}
+    const c=cl(activeCard());c.done=true;const ok=logRound(c);saveCard(c);
+    note(ok?'Round finished and added to today\'s golf log.':'Round finished: '+resultText(c));scView=c.id;render()}
   else if(D.scdel){if(!b.dataset.sure){b.dataset.sure=1;b.textContent='Tap again to delete';b.classList.add('hot');return}put('cards/'+D.scdel,null);scView=null}
   else if(b.id==='tstart'){setTimer(t=>{t.start=Date.now();t.first=t.first||t.start});toast('Workout started')}
   else if(b.id==='tpause'){setTimer(t=>{if(t.start){t.segs.push([t.start,Date.now()]);t.start=null}});toast('Paused')}
@@ -996,6 +1008,7 @@ async function signedIn(u){
   db=makeDb();
   sample={run:async(task,input)=>{const j=await api('/api/ai',{task,input});return j.result}};
   showAuth(false);note('');render();
+  try{backfillRounds()}catch(e){}
 }
 function showErr(msg,e){showAuth(true);const d=e&&(e.message||e.code||String(e));
   A.innerHTML=`<div class="card"><h2>Something went wrong</h2><p>${esc(msg)}</p>${d?`<p class="note">Details: ${esc(d)}</p>`:''}
